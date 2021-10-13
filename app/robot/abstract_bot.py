@@ -1,0 +1,2 @@
+class TradingBot():
+    pass

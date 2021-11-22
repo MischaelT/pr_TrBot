@@ -1,5 +1,9 @@
+from exchange_managers.binance_manager import BinanceManager
 from robot.abstract_bot import TradingBot
-from exchange_clients.binance_client import Client
+from ta_managers.ta_archive_manager import clean_data
+
+import talib
+
 import json
 
 
@@ -13,13 +17,11 @@ class CryptoBot(TradingBot):
         with open('app/keys.json') as f:
             keys = json.load(f)
 
-        api_key_from_user = keys['binance_API_key']
-
         self.bot_is_active = True
-        self.manager = Client(api_key_from_user)
+        self.manager = BinanceManager(keys)
         super().__init__()
 
     def main(self):
-        while self.bot_is_active:
-            for ticker in self.__trading_list:
-                print(self.manager.get_price(ticker))
+        path_to_data = 'app/business_logic/exchange_managers/archive_data/1H_NEOBUSD_historical_data.csv'
+        self.manager.save_historical_data(path_to_data)
+        print(talib.RSI(clean_data(path_to_data)))

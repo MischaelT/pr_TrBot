@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 manage_py := python3 app/manage.py
 # Тут не проелы, а табуляция
-runserver: 
+server: 
 	$(manage_py) runserver 
 
 migrate:

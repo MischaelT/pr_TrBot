@@ -1,8 +1,6 @@
 from exchange_managers.binance_manager import BinanceManager
 from robot.abstract_bot import TradingBot
-from ta_managers.ta_archive_manager import clean_data
-
-import talib
+from archive.ta_archive_manager import clean_data
 
 import json
 
@@ -22,6 +20,6 @@ class CryptoBot(TradingBot):
         super().__init__()
 
     def main(self):
-        path_to_data = 'app/business_logic/exchange_managers/archive_data/1H_NEOBUSD_historical_data.csv'
+        path_to_data = 'app/business_logic/archive/data/4H_NEOBUSD_historical_data.csv'
         self.manager.save_historical_data(path_to_data)
-        print(talib.RSI(clean_data(path_to_data)))
+        

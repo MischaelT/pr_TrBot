@@ -1,23 +1,101 @@
+from numpy import double
 from exchange_managers.manager import Manager
 from binance.client import Client
-import csv
+from business_logic.data.storage.db_manager import Db_manager
 
+from binance.client import TIME_IN_FORCE_GTC
+from binance.exceptions import BinanceAPIException, BinanceRequestException
 
+#TODO Make exception handling
 class BinanceManager(Manager):
 
-    def __init__(self, keys) -> None:
+    def __init__(self, api_key, secret_key) -> None:
 
-        self.client = Client(keys['binance_API_key'], keys['binance_API_key']) #  TODO Исправить
-
-    def save_historical_data(self, path, ticker='NEOBUSD', interval=Client.KLINE_INTERVAL_1HOUR, from_date='12 month ago UTC'):  # noqa
-
-        with open(path, 'w', newline='') as csvfile:
-            candlestick_writer = csv.writer(csvfile, delimiter=',')
-
-            candles = self.client.get_historical_klines(ticker, interval, from_date)
-
-            for candle in candles:
-                candle[0]/=1000
-                candlestick_writer.writerow(candle)
+        self.__client = Client(api_key = api_key, api_secret = secret_key)
+        self.__manager = Db_manager()
 
 
+    def check_status(self) -> bool:
+
+        status = self.__client.get_system_status()
+
+        if status == 1:
+            return False
+
+        return True
+
+    def save_historical_data(self, path, ticker:str, interval:str, from_date:str) -> None:  # noqa
+
+        for kline in self.__client.get_historical_klines_generator(ticker, interval, from_date):
+            self.__manager.push_data(kline)
+
+#TODO Make method simplier
+    def place_an_order(self, order_type:str, order_direction:str, ticker:str, quantity:double,  price:str) -> bool:
+
+        if order_type == 'market':
+
+            if order_direction=='buy':
+
+                self.__client.order_market_buy(symbol = ticker, quantity = quantity, price = price)
+                return True
+
+            self.__client.order_market_sell(symbol = ticker, quantity = quantity, price = price)
+            return True
+
+        elif order_type == 'limit':
+
+            if order_direction=='buy':
+
+                self.__client.order_limit_buy(symbol = ticker, quantity = quantity, price = price)
+                return True
+                
+            self.__client.order_limit_sell(symbol = ticker, quantity = quantity, price = price)
+            return True
+
+        else:
+            return False
+
+    def place_OCO_order(self, order_direction: str, ticker:str, quantity:double, price:str, stop_price:str,) -> None:
+
+        try:
+            self.__client.create_oco_order(
+                symbol = ticker,
+                side = order_direction,
+                stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+                quantity = quantity,
+                stopPrice = stop_price,
+                price = price
+            )
+
+        except BinanceRequestException:
+            return False
+
+        except BinanceAPIException:
+            return False
+
+        return True
+
+    def cancel_an_order(self, ticker, OrderId) -> None:
+        self.__client.cancel_order(
+                                symbol=ticker,
+                                orderId=OrderId
+                            )
+
+    def get_open_orders(self, ticker) -> list:
+        return self.__client.get_open_orders(symbol=ticker)
+
+    """Account functions"""
+
+    def get_asset_balance(self, ticker:str = 'All') -> dict:
+        account = self.__client.get_account()
+
+        balances = account.popitem('balances')
+
+        if ticker == 'All':
+            return balances
+
+        for item in balances.get('balances'):
+            if item.get('asset') == ticker:
+                return item
+            else:
+                return {}

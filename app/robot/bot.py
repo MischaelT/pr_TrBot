@@ -14,7 +14,7 @@ class CryptoBot(TradingBot):
 
         self.__bot_is_active = True
         self.__manager = BinanceManager(config.API_KEY, config.SECRET_KEY)
-        
+
         self.__trading_list = config.TRADING_LIST
 
         super().__init__()
@@ -26,11 +26,8 @@ class CryptoBot(TradingBot):
 
     def get_historical_data(self):
 
-
-# TODO Разобраться в скобочках
-
         if self.__manager.check_status:
-            file_name = 'NEOBUSD'+ '_' + Client.KLINE_INTERVAL_4HOUR+ '_' + '3 year ago UTC'
-            self.__manager.save_historical_data('NEOBUSD', Client.KLINE_INTERVAL_1DAY, '3 year ago UTC', file_name=file_name)
+            file_name = 'NEOBUSD' + '_' + Client.KLINE_INTERVAL_4HOUR + '_' + '3 year ago UTC'
+            self.__manager.save_historical_data('NEOBUSD', Client.KLINE_INTERVAL_1DAY, '3 year ago UTC', file_name=file_name)  # noqa
         else:
-            print('Fuck')
+            print('Thats not working')

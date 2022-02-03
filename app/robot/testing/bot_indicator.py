@@ -3,8 +3,8 @@ import backtrader as bt
 from ..bot import CryptoBot
 
 
-class Bot_indicator():
-    
+class Bot_indicator(bt.Indicator):
+
     """
     This class represents a backtrader indicator,based on class Crypto bot
     """

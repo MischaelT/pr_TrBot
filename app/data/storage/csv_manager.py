@@ -33,4 +33,3 @@ class Csv_manager(storage_Manager):
                 cleaned_data.append(numpy.double(row[3]))
         print(cleaned_data)
         return numpy.array(cleaned_data)
-

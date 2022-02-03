@@ -17,7 +17,7 @@ class Db_manager(storage_Manager):
 
         try:
             con = sqlite3.connect('vacancies.db')
-        except Error as e:
+        except Error:
             pass
 
         cur = con.cursor()
@@ -37,7 +37,7 @@ class Db_manager(storage_Manager):
 
         try:
             con = sqlite3.connect('vacancies.db')
-        except Error as _:
+        except Error:
             pass
 
         cur = con.cursor()

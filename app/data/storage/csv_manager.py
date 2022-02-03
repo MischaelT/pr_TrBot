@@ -1,21 +1,21 @@
 import csv
 import numpy
 
-from business_logic.data.storage.storage_manager import storage_Manager
+from data.storage.storage_manager import storage_Manager
 
 
 class Csv_manager(storage_Manager):
 
-    def push_data(self, data):
-        self._validate(data)
-        self._write(data)
+    def push_data(self, data, file_name):
+        # self._validate(data)
+        self._write(data, file_name)
 
-    def _write(self, data):
+    def _write(self, data, file_name):
         try:
-            with open('vacancies.csv', 'a') as file:
+            with open(f'{file_name}.csv', 'a') as file:
                 writer = csv.writer(file)
                 data_to_csv = []
-                for element in data.values():
+                for element in data:
                     data_to_csv.append(element)
                 writer.writerow(data_to_csv)
         except IOError:

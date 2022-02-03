@@ -2,4 +2,4 @@ from robot.bot import CryptoBot
 
 bot = CryptoBot()
 
-bot.main()
+bot.get_historical_data()

@@ -1,7 +1,7 @@
 import sqlite3
 from sqlite3.dbapi2 import Error
 
-from business_logic.data.storage.storage_manager import storage_Manager
+from data.storage.storage_manager import storage_Manager
 
 
 class Db_manager(storage_Manager):

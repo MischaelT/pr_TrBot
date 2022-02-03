@@ -1,9 +1,9 @@
 from numpy import double
+from data.storage.csv_manager import Csv_manager
 from exchange_managers.manager import Manager
 from binance.client import Client
-from business_logic.data.storage.db_manager import Db_manager
+from data.storage.db_manager import Db_manager
 
-from binance.client import TIME_IN_FORCE_GTC
 from binance.exceptions import BinanceAPIException, BinanceRequestException
 
 #TODO Make exception handling
@@ -12,8 +12,8 @@ class BinanceManager(Manager):
     def __init__(self, api_key, secret_key) -> None:
 
         self.__client = Client(api_key = api_key, api_secret = secret_key)
-        self.__manager = Db_manager()
-
+        # self.__manager = Db_manager()
+        self.__manager = Csv_manager()
 
     def check_status(self) -> bool:
 
@@ -24,10 +24,11 @@ class BinanceManager(Manager):
 
         return True
 
-    def save_historical_data(self, path, ticker:str, interval:str, from_date:str) -> None:  # noqa
+    def save_historical_data(self, ticker:str, interval:str, from_date:str, file_name) -> None:  # noqa
 
         for kline in self.__client.get_historical_klines_generator(ticker, interval, from_date):
-            self.__manager.push_data(kline)
+            kline[0] = int(kline[0]/1000)
+            self.__manager.push_data(kline, file_name)
 
 #TODO Make method simplier
     def place_an_order(self, order_type:str, order_direction:str, ticker:str, quantity:double,  price:str) -> bool:
@@ -61,7 +62,7 @@ class BinanceManager(Manager):
             self.__client.create_oco_order(
                 symbol = ticker,
                 side = order_direction,
-                stopLimitTimeInForce=TIME_IN_FORCE_GTC,
+                stopLimitTimeInForce= Client.TIME_IN_FORCE_GTC,
                 quantity = quantity,
                 stopPrice = stop_price,
                 price = price
@@ -75,7 +76,7 @@ class BinanceManager(Manager):
 
         return True
 
-    def cancel_an_order(self, ticker, OrderId) -> None:
+    def cancel_an_order(self, ticker:str, OrderId:int) -> None:
         self.__client.cancel_order(
                                 symbol=ticker,
                                 orderId=OrderId

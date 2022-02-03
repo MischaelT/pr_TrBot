@@ -1,6 +1,6 @@
 import json
 
-from business_logic.data.storage.storage_manager import storage_Manager
+from data.storage.storage_manager import storage_Manager
 
 
 class Json_manager(storage_Manager):

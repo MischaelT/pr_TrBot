@@ -1,8 +1,10 @@
-from abc import ABC, abstractclassmethod
+from abc import ABC
 
 
 class TradingBot(ABC):
 
-    @abstractclassmethod
-    def get_predictions_by_data():
-        pass
+    """
+    Base class for trading bots
+    """
+
+    pass

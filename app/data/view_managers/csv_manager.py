@@ -1,10 +1,11 @@
 import csv
+
+from data.view_managers.view_base_manager import view_Manager
+
 import numpy
 
-from data.storage.storage_manager import storage_Manager
 
-
-class Csv_manager(storage_Manager):
+class Csv_manager(view_Manager):
 
     def push_data(self, data, file_name):
         # self._validate(data)
@@ -31,5 +32,5 @@ class Csv_manager(storage_Manager):
 
             for row in data_reader:
                 cleaned_data.append(numpy.double(row[3]))
-        print(cleaned_data)
+
         return numpy.array(cleaned_data)

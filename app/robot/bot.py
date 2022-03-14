@@ -1,14 +1,15 @@
-from exchange_managers.binance_manager import BinanceManager
-from robot.abstract_bot import TradingBot
-import config
+import logging
+
 from binance.client import Client
+
+import config
+
+from exchange_managers.binance_manager import BinanceManager
+
+from robot.abstract_bot import TradingBot
 
 
 class CryptoBot(TradingBot):
-
-    @classmethod
-    def get_predictions_by_data(data):
-        pass
 
     def __init__(self) -> None:
 
@@ -26,8 +27,8 @@ class CryptoBot(TradingBot):
 
     def get_historical_data(self):
 
-        if self.__manager.check_status:
-            file_name = 'NEOBUSD' + '_' + Client.KLINE_INTERVAL_4HOUR + '_' + '3 year ago UTC'
-            self.__manager.save_historical_data('NEOBUSD', Client.KLINE_INTERVAL_1DAY, '3 year ago UTC', file_name=file_name)  # noqa
+        if self.__manager.check_connection():
+            file_name = 'BTCBUSD' + '_' + Client.KLINE_INTERVAL_1DAY + '_' + '499 days ago UTC'
+            self.__manager.save_historical_data('BTCBUSD', Client.KLINE_INTERVAL_1DAY, '499 days ago UTC', file_name=file_name)  # noqa
         else:
-            print('Thats not working')
+            logging.info('Thats not working')

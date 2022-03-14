@@ -1,6 +1,6 @@
 import json
 
-from data.storage.storage_manager import storage_Manager
+from data.storage_managers.storage_manager import storage_Manager
 
 
 class Json_manager(storage_Manager):

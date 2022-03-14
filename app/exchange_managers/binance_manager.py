@@ -1,21 +1,45 @@
-from numpy import double
-from data.storage.csv_manager import Csv_manager
-from exchange_managers.manager import Manager
 from binance.client import Client
-
 from binance.exceptions import BinanceAPIException, BinanceRequestException
+
+from data.view_managers.csv_manager import Csv_manager
+
+from exchange_managers.abstract_manager import Manager
+
+from numpy import double
 
 
 # TODO Make exception handling
 class BinanceManager(Manager):
 
+    """
+        That class implements abstract class Manager and provides methods for interactions with Binance API
+    """
+
     def __init__(self, api_key, secret_key) -> None:
+
+        """
+            That method initialize an object for class BinanceManager.
+            Both api keys: public and secret must be provided.
+            API key can be received via your Binance acccount.
+
+        Args:
+            api_key (str): That is string that represents public key for binance API
+            secret_key (str): That is string that represents private key for Binance API
+        """
 
         self.__client = Client(api_key=api_key, api_secret=secret_key)
         # self.__manager = Db_manager()
         self.__manager = Csv_manager()
 
-    def check_status(self) -> bool:
+    def check_connection(self) -> bool:
+
+        """
+            Method that implements abstract method check_connection() from base class Manager.
+            It tries to connect to Binance Api.
+
+        Returns:
+            [bool]: True if connection is succesful, False if not
+        """
 
         status = self.__client.get_system_status()
 
@@ -24,43 +48,68 @@ class BinanceManager(Manager):
 
         return True
 
-    def save_historical_data(self, ticker: str, interval: str, from_date: str, file_name) -> None:  # noqa
+    # TODO Bug in saving historical data
+    def save_historical_data(self, symbol: str, timeframe: str, from_date: str, file_name: str) -> None:  # noqa
 
-        for kline in self.__client.get_historical_klines_generator(ticker, interval, from_date):
+        """
+            Connects to API, get historical data by given symbol for given period of time, and save it in storage
+
+        Args:
+            symbol (str): represents name of asset
+            timeframe (str): timeframe of data (15m, 1h, 1d, 1w etc)
+            from_date (str): start date for data
+            file_name (str): desired filename (only for csv files)
+        """
+
+        for kline in self.__client.get_historical_klines_generator(symbol, timeframe, start_str=1612051200000):
             kline[0] = int(kline[0]/1000)
             self.__manager.push_data(kline, file_name)
 
-# TODO Make method simplier
-    def place_an_order(self, order_type: str, order_direction: str, ticker: str, quantity: double,  price: str) -> bool:
+    # TODO Make method simplier
+    def place_an_order(self, order_type: str, order_direction: str, symbol: str, quantity: double,  price: str) -> bool:
 
         if order_type == 'market':
 
             if order_direction == 'buy':
 
-                self.__client.order_market_buy(symbol=ticker, quantity=quantity, price=price)
+                self.__client.order_market_buy(symbol=symbol, quantity=quantity, price=price)
                 return True
 
-            self.__client.order_market_sell(symbol=ticker, quantity=quantity, price=price)
+            self.__client.order_market_sell(symbol=symbol, quantity=quantity, price=price)
             return True
 
         elif order_type == 'limit':
 
             if order_direction == 'buy':
 
-                self.__client.order_limit_buy(symbol=ticker, quantity=quantity, price=price)
+                self.__client.order_limit_buy(symbol=symbol, quantity=quantity, price=price)
                 return True
 
-            self.__client.order_limit_sell(symbol=ticker, quantity=quantity, price=price)
+            self.__client.order_limit_sell(symbol=symbol, quantity=quantity, price=price)
             return True
 
         else:
             return False
 
-    def place_OCO_order(self, order_direction: str, ticker: str, quantity: double, price: str, stop_price: str) -> None:
+    def place_OCO_order(self, order_direction: str, symbol: str, quantity: float, price: str, stop_price: str) -> bool:
+
+        """
+            Places OCO (one-cancel-other) order for given asset
+
+        Args:
+            order_direction (str): buy/sell
+            symbol (str): name of desired asset
+            quantity (float): size of order
+            price (str): desired price for order
+            stop_price (str): desired stop price for order
+
+        Returns:
+            [bool]: True if order was placed, false if method raized an exception
+        """
 
         try:
             self.__client.create_oco_order(
-                symbol=ticker,
+                symbol=symbol,
                 side=order_direction,
                 stopLimitTimeInForce=Client.TIME_IN_FORCE_GTC,
                 quantity=quantity,
@@ -76,27 +125,67 @@ class BinanceManager(Manager):
 
         return True
 
-    def cancel_an_order(self, ticker: str, OrderId: int) -> None:
-        self.__client.cancel_order(
-                                symbol=ticker,
-                                orderId=OrderId
-                            )
+    # TODO implement receiving an orderID inside method
+    def cancel_an_order(self, symbol: str, OrderId: int) -> bool:
 
-    def get_open_orders(self, ticker) -> list:
-        return self.__client.get_open_orders(symbol=ticker)
+        """
+            Cancel an order by given symbol
+
+        Args:
+            symbol (str): desired symbol
+            OrderId (int): deprecated
+
+        Returns:
+            bool: True if cancel was succesful and False if request raised exception
+        """
+
+        try:
+            self.__client.cancel_order(
+                                    symbol=symbol,
+                                    orderId=OrderId
+                                )
+        except BinanceRequestException:
+            return False
+
+        except BinanceAPIException:
+            return False
+
+        return True
+
+    def get_open_orders(self, symbol: str) -> list:
+
+        """
+           Get all open orders for given symbol
+
+        Args:
+            symbol (str): a name of desired symbol
+
+        Returns:
+            list: list of all open orders by given symbol for account
+        """
+
+        return self.__client.get_open_orders(symbol=symbol)
 
     """Account functions"""
+    # TODO Make function return several balanses
+    def get_asset_balance(self, symbol: str = 'All') -> dict:
 
-    def get_asset_balance(self, ticker: str = 'All') -> dict:
+        """
+            Gives an asset balance for given symbol
+
+        Returns:
+            [dict]: dict with balance of given symbols
+        """
+
         account = self.__client.get_account()
 
         balances = account.popitem('balances')
 
-        if ticker == 'All':
+        if symbol == 'All':
             return balances
 
         for item in balances.get('balances'):
-            if item.get('asset') == ticker:
+            if item.get('asset') == symbol:
                 return item
             else:
                 return {}

@@ -2,4 +2,5 @@ from robot.bot import CryptoBot
 
 bot = CryptoBot()
 
-bot.get_historical_data()
+if __name__ == '__main__':
+    bot.get_historical_data()

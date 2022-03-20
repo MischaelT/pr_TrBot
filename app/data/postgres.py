@@ -1,14 +1,12 @@
 import logging
 
-from backend.data.db.base_db import Base_db
-
 import psycopg2
 
-from settings.config import (POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD,
+from utils.config import (POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD,
                              POSTGRES_PORT, POSTGRES_USER)
 
 
-class Postgres_db(Base_db):
+class Postgres_db:
 
     """
         Class provides access to postgres database
@@ -18,8 +16,8 @@ class Postgres_db(Base_db):
 
         super().__init__()
 
-        self.__create_table_users()
-        self.__create_table_vacancies()
+        # self.__create_table_users()
+        # self.__create_table_coins()
 
     def get_data(self, request_text: str, params: tuple) -> list:
 
@@ -40,10 +38,10 @@ class Postgres_db(Base_db):
 
         self._write(query, params)
 
-    def __create_table_users(self) -> None:
+    def __create_table_coins(self) -> None:
 
         """
-            Method create table users.
+            Method create table coins.
             Raise Exception if table already exists
         """
 
@@ -77,7 +75,7 @@ class Postgres_db(Base_db):
                 cursor.close()
                 connection.close()
 
-    def __create_table_vacancies(self) -> None:
+    def __create_table_by_name(self, params) -> None:
 
         """
             Method create table vacancies.
@@ -92,15 +90,15 @@ class Postgres_db(Base_db):
 
             create_vacancies_query = '''CREATE TABLE vacancies
                                 (
-                                ID             SMALLSERIAL                  NOT NULL,
-                                DATE           DATE                         NOT NULL,
-                                EXP            TEXT                         NOT NULL,
-                                LANG           TEXT                         NOT NULL,
-                                CITY           TEXT                         NOT NULL,
-                                TITLE          TEXT                         NOT NULL,
-                                INFO           TEXT                         NOT NULL,
-                                LINK           TEXT                         NOT NULL,
-                                SALARY         SMALLINT                     NOT NULL
+                                COIN_ID
+                                UNIX_TIME       SMALLSERIAL                  NOT NULL,
+                                OPEN            REAL                         NOT NULL,
+                                HIGH            REAL                         NOT NULL,
+                                LOW             REAL                         NOT NULL,
+                                CLOSE           REAL                         NOT NULL,
+                                VOLUME          REAL                         NOT NULL,
+                                TRADES_NUM      INT                          NOT NULL,
+
                                 ); '''
 
             cursor.execute(create_vacancies_query)

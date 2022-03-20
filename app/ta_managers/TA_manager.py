@@ -4,30 +4,21 @@ import pandas as pd
 
 import talib
 
-
-def get_predictions_by_data(data: str = ''):
-
-    cols_names = cols_names = [
-                                'unix_time', 'open',
-                                'high', 'low',
-                                'close', 'volume',
-                                'unix_close_time',
-                                'Quote asset volume',
-                                'Number_of_trades',
-                                'base asset volume',
-                                'Taker buy quote asset volume',
-                                'Ignore'
-                                ]
-
-    df = pd.read_csv('app/ta_managers/BTCBUSD_1d_499 days ago UTC.csv', names=cols_names, keep_date_col=True)
+# TODO Make choices
+def get_predictions_by_data(df: pd.DataFrame) -> None:
 
     df = df.iloc[::-1].reset_index(drop=True)
 
     df['macd'], df['macdsignal'], df['macdhist'] = talib.MACD(df['close'].values, fastperiod=12, slowperiod=26, signalperiod=9) # noqa
     df['rsi'] = talib.RSI(df['close'].values, 50)
     df["prediction"] = np.nan
+    df['volume_change'] = np.nan
 
     for index, row in df.iterrows():
+        volume_change = 0
+
+        if index>3:
+            volume_change = row['volume'] / df.loc[index-3, 'volume']
 
         prediction_value = 0
 
@@ -38,11 +29,12 @@ def get_predictions_by_data(data: str = ''):
             prediction_value = -1
 
         df.at[index, 'prediction'] = prediction_value
+        df.at[index, 'volume_change'] = volume_change
 
-        # df['unix_time'] = pd.to_datetime(df['unix_time'])
-        # df.set_index('unix_time', inplace=True)
+        df.at[index, 'unix_time']  = pd.to_datetime(row['unix_time'], unit='s')
 
-    df[['unix_time', 'prediction']].to_csv('prediction_file.csv')
+    # df.set_index('unix_time', inplace=True)
+    # df['index'] = df.index
+    df[['prediction',]].to_csv('prediction_file.csv')
 
-
-get_predictions_by_data()
+    return df[['prediction']]

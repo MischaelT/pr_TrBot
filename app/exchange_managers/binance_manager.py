@@ -1,15 +1,16 @@
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceRequestException
+from data.postgres import Postgres_db
 
-from data.view_managers.csv_manager import Csv_manager
+# from data.view_managers.csv_manager import Csv_manager
 
-from exchange_managers.abstract_manager import Manager
+from exchange_managers.abstract_manager import Exchange_manager
 
 from numpy import double
 
 
 # TODO Make exception handling
-class BinanceManager(Manager):
+class BinanceManager(Exchange_manager):
 
     """
         That class implements abstract class Manager and provides methods for interactions with Binance API
@@ -28,8 +29,8 @@ class BinanceManager(Manager):
         """
 
         self.__client = Client(api_key=api_key, api_secret=secret_key)
-        # self.__manager = Db_manager()
-        self.__manager = Csv_manager()
+        self.__manager = Postgres_db()
+        # self.__manager = Csv_manager()
 
     def check_connection(self) -> bool:
 
@@ -48,7 +49,6 @@ class BinanceManager(Manager):
 
         return True
 
-    # TODO Bug in saving historical data
     def save_historical_data(self, symbol: str, timeframe: str, from_date: str, file_name: str) -> None:  # noqa
 
         """
@@ -60,36 +60,39 @@ class BinanceManager(Manager):
             from_date (str): start date for data
             file_name (str): desired filename (only for csv files)
         """
-
+        num = 0
         for kline in self.__client.get_historical_klines_generator(symbol, timeframe, start_str=1612051200000):
-            kline[0] = int(kline[0]/1000)
-            self.__manager.push_data(kline, file_name)
 
-    # TODO Make method simplier
-    def place_an_order(self, order_type: str, order_direction: str, symbol: str, quantity: double,  price: str) -> bool:
+            if num == 499:
+                break
+            
+            num+=1
+
+            kline[0] = int(kline[0]/1000)
+
+            params = (symbol, kline[0], kline[1], kline[2], kline[3], kline[4], kline[5], timeframe,)
+
+            query = '''INSERT INTO %s (unix_time, open, high, low, close, volume, timeframe)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    '''
+
+            # self.__manager.push_data(kline, file_name)  FOR CSV
+            self.__manager.push_data(query, params)
+
+    def place_buy_order(self, order_type: str, symbol: str, quantity: double,  price: str):
 
         if order_type == 'market':
-
-            if order_direction == 'buy':
-
-                self.__client.order_market_buy(symbol=symbol, quantity=quantity, price=price)
-                return True
-
-            self.__client.order_market_sell(symbol=symbol, quantity=quantity, price=price)
-            return True
-
-        elif order_type == 'limit':
-
-            if order_direction == 'buy':
-
-                self.__client.order_limit_buy(symbol=symbol, quantity=quantity, price=price)
-                return True
-
-            self.__client.order_limit_sell(symbol=symbol, quantity=quantity, price=price)
-            return True
-
+            self.__client.order_market_buy(symbol=symbol, quantity=quantity, price=price)
         else:
-            return False
+            self.__client.order_limit_buy(symbol=symbol, quantity=quantity, price=price)
+
+
+    def place_sell_order(self, order_type: str, symbol: str, quantity: double,  price: str):
+
+        if order_type == 'market':
+            self.__client.order_market_sell(symbol=symbol, quantity=quantity, price=price)
+        else:
+            self.__client.order_limit_sell(symbol=symbol, quantity=quantity, price=price)
 
     def place_OCO_order(self, order_direction: str, symbol: str, quantity: float, price: str, stop_price: str) -> bool:
 
@@ -126,7 +129,7 @@ class BinanceManager(Manager):
         return True
 
     # TODO implement receiving an orderID inside method
-    def cancel_an_order(self, symbol: str, OrderId: int) -> bool:
+    def cancel_order(self, symbol: str, OrderId: int) -> bool:
 
         """
             Cancel an order by given symbol

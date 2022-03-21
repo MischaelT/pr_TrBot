@@ -1,9 +1,11 @@
 import logging
 
+import pandas as pd
+
 import psycopg2
 
 from utils.config import (POSTGRES_DB, POSTGRES_HOST, POSTGRES_PASSWORD,
-                             POSTGRES_PORT, POSTGRES_USER)
+                          POSTGRES_PORT, POSTGRES_USER)
 
 
 class Postgres_db:
@@ -37,6 +39,13 @@ class Postgres_db:
         """
 
         self._write(query, params)
+
+    def query_to_dataframe(self, query_result) -> pd.DataFrame:
+
+        columns = ('open', 'high', 'low', 'close', 'volume', 'timeframe', 'unix_time')
+        df = pd.DataFrame(query_result, columns=columns)
+
+        return df
 
     def __create_table_coins(self) -> None:
 

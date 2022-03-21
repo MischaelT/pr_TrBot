@@ -1,8 +1,7 @@
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceRequestException
-from data.postgres import Postgres_db
 
-# from data.view_managers.csv_manager import Csv_manager
+from data.postgres import Postgres_db
 
 from exchange_managers.abstract_manager import Exchange_manager
 
@@ -30,7 +29,6 @@ class BinanceManager(Exchange_manager):
 
         self.__client = Client(api_key=api_key, api_secret=secret_key)
         self.__manager = Postgres_db()
-        # self.__manager = Csv_manager()
 
     def check_connection(self) -> bool:
 
@@ -49,7 +47,7 @@ class BinanceManager(Exchange_manager):
 
         return True
 
-    def save_historical_data(self, symbol: str, timeframe: str, from_date: str, file_name: str) -> None:  # noqa
+    def save_historical_data(self, symbol: str, timeframe: str, from_date: int, to_date: int) -> None:  # noqa
 
         """
             Connects to API, get historical data by given symbol for given period of time, and save it in storage
@@ -57,23 +55,26 @@ class BinanceManager(Exchange_manager):
         Args:
             symbol (str): represents name of asset
             timeframe (str): timeframe of data (15m, 1h, 1d, 1w etc)
-            from_date (str): start date for data
-            file_name (str): desired filename (only for csv files)
+            from_date (int): timetamps in seconds
+            to_date (int): timestamp in seconds
         """
-        num = 0
-        for kline in self.__client.get_historical_klines_generator(symbol, timeframe, start_str=1612051200000):
 
-            if num == 499:
-                break
-            
-            num+=1
+        from_date *= 1000
+        to_date *= 1000
+
+        klines_gen = self.__client.get_historical_klines_generator(symbol, timeframe, start_str=from_date, end_str=to_date)  # noqa
+
+        for kline in klines_gen:
 
             kline[0] = int(kline[0]/1000)
 
-            params = (symbol, kline[0], kline[1], kline[2], kline[3], kline[4], kline[5], timeframe,)
+            for i in range(1, 6):
+                kline[i] = round(float(kline[i]), 2)
 
-            query = '''INSERT INTO %s (unix_time, open, high, low, close, volume, timeframe)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+            params = (kline[0], kline[1], kline[2], kline[3], kline[4], kline[5], timeframe,)
+
+            query = '''INSERT INTO btc_usd (unix_time, open_price, high, low, close_price, volume, timeframe)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     '''
 
             # self.__manager.push_data(kline, file_name)  FOR CSV
@@ -85,7 +86,6 @@ class BinanceManager(Exchange_manager):
             self.__client.order_market_buy(symbol=symbol, quantity=quantity, price=price)
         else:
             self.__client.order_limit_buy(symbol=symbol, quantity=quantity, price=price)
-
 
     def place_sell_order(self, order_type: str, symbol: str, quantity: double,  price: str):
 

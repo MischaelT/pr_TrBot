@@ -1,7 +1,8 @@
-import pandas as pd
 from pandas import DataFrame
-from ta_managers.TA_manager import get_predictions_by_data
+
 from strategies.base_strategy import Base_strategy
+
+from ta_managers.TA_manager import get_predictions_by_data
 
 
 class Rsi_strategy(Base_strategy):
@@ -9,39 +10,27 @@ class Rsi_strategy(Base_strategy):
     def __init__(self) -> None:
         super().__init__()
 
-    def get_test_prediction(self, ticker, index, timeframe:str) -> str:
+    def get_prediction(self, ticker: str, kline: str) -> str:
 
-        df = self.data_to_dataframe(ticker, timeframe, time_range=200)
-        predictions = get_predictions_by_data(df)
+        date = kline[1]
 
-        prediction = predictions["prediction"].iloc[index]
-
-        return prediction
-
-    def get_prediction(self, ticker:str, timeframe:str) -> str:
-
-        df = self.data_to_dataframe(ticker, timeframe, time_range=200)
+        df = self.data_to_dataframe(ticker, date=date, timeframe='1h')
         predictions = get_predictions_by_data(df)
 
         prediction = predictions["prediction"].iloc[0]
 
         return prediction
 
-    def data_to_dataframe(self, ticker:str, timeframe:str, time_range:int) -> DataFrame:
+    def data_to_dataframe(self, ticker: str, timeframe: str, date: int) -> DataFrame:
 
-        cols_names = [
-                    'unix_time', 'open',
-                    'high', 'low',
-                    'close', 'volume',
-                    'unix_close_time',
-                    'Quote asset volume',
-                    'Number_of_trades',
-                    'base asset volume',
-                    'Taker buy quote asset volume',
-                    'Ignore'
-                    ]
+        query = """SELECT * FROM btc_usd
+                    WHERE unix_time<%s
+                    LIMIT 51"""
 
-        df = pd.read_csv('app/data/view_managers/csv/BTCBUSD_1d_499 days ago UTC.csv', names=cols_names, keep_date_col=True)
+        params = (date,)
+
+        data = self.db.get_data(query, params)
+
+        df = self.db.query_to_dataframe(data)
 
         return df
-

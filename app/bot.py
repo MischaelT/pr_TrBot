@@ -17,7 +17,7 @@ class CryptoBot():
     def __init__(self, user: User, strategy: Union[Rsi_strategy, Another_strategy], manager: Union[BinanceManager, TestManager]) -> None:  # noqa
 
         self.__manager = manager
-        self.__trading_list = user.trading_list
+        self.__trading_list = ['']
         self.__strategy = strategy
 
         self.__bot_is_active = True
@@ -30,32 +30,30 @@ class CryptoBot():
 
             klines_gen = self.__manager.get_current_kline()
 
-            try:
+            for coin in self.__trading_list:
                 for kline in klines_gen:
 
-                    klines_gen = self.__manager.get_current_kline()
-                    prediction = self.__strategy.get_prediction(ticker='', kline=kline)
+                    logging.info(kline)
+                    prediction = self.__strategy.get_prediction(ticker=coin, kline=kline)
 
-                    self.trade(prediction)
-                    self.__manager.get_statistics()
+                    self.trade(prediction, coin)
 
-            except Exception as ex:
-                logging.exception(ex)
-                self.__bot_is_active = False
+                self.__manager.get_statistics()
 
-    def trade(self, prediction: str) -> None:
-        prediction = -1
+            break
+
+    def trade(self, prediction: str, coin) -> None:
 
         if prediction == 1:
-            logging.DEBUG('buy')
-            self.__manager.place_buy_order(quantity=1, )
+
+            self.__manager.place_buy_order(order_type='market', symbol=coin, quantity=1, price='')
 
         elif prediction == -1:
-            logging.DEBUG('sell')
-            self.__manager.place_sell_order(quantity=1)
+
+            self.__manager.place_sell_order(order_type='market', symbol=coin, quantity=1, price='')
 
         else:
-            logging.DEBUG('Do nothing')
+
             self.__manager.do_nothing()
 
     def get_historical_data(self):

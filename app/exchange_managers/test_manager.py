@@ -17,11 +17,11 @@ class TestManager(Exchange_manager):
     def check_connection(self):
         return True
 
-    def place_buy_order(self, quantity):
-        self.exchange.place_buy_order(quantity)
+    def place_buy_order(self, order_type, symbol, quantity, price):
+        self.exchange.place_buy_order(order_type, symbol, quantity, price)
 
-    def place_sell_order(self, quantity):
-        self.exchange.place_sell_order(quantity)
+    def place_sell_order(self, order_type, symbol, quantity, price):
+        self.exchange.place_sell_order(order_type, symbol, quantity, price)
 
     def do_nothing(self):
         self.exchange.do_nothing()

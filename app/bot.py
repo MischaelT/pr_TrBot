@@ -46,11 +46,11 @@ class CryptoBot():
 
         if prediction == 1:
 
-            self.__manager.place_buy_order(order_type='market', symbol=coin, quantity=1, price='')
+            self.__manager.place_market_order(order_direction='buy', symbol=coin, quantity=1)
 
         elif prediction == -1:
 
-            self.__manager.place_sell_order(order_type='market', symbol=coin, quantity=1, price='')
+            self.__manager.place_market_order(order_direction='sell', symbol=coin, quantity=1)
 
         else:
 

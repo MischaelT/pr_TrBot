@@ -1,11 +1,17 @@
 import logging
 import uuid
-from test.order import Order
-from typing import List
+from test.models.kline import Kline
+from test.models.orders.limit_order import LimitOrder
+from test.models.orders.market_order import MarketOrder
+from test.models.orders.oco_order import Oco_Order
+from test.models.orders.stopLoss_order import StopLossOrder
+from typing import List, Union
 
 from data.postgres import Postgres_db
 
 import pandas as pd
+
+from utils.config import COMISSION
 
 
 class Test_exchange():
@@ -16,14 +22,14 @@ class Test_exchange():
 
         self.account_balance = account_balance
         self.asset_balance = 0
-
-        self.comission = 0.001
-        self.klines_df = self.get_asset_dataframe(start_date)
-
         self.history_df: pd.DataFrame = self.get_history_dataframe()
 
+        self.comission = COMISSION
+        self.klines_df = self.get_asset_dataframe(start_date)
+        self.orders_list: List[Union[StopLossOrder, MarketOrder, Oco_Order, LimitOrder]] = []
+        self.current_kline: Kline = None
+
         self.tick = 0
-        self.orders_list: List[Order] = []
 
     def get_curent_kline(self):
 
@@ -32,13 +38,18 @@ class Test_exchange():
             self.__manage_orders()
 
             self.tick += 1
+            self.current_kline = Kline(tick=self.tick, open_price=row[1],
+                                       high_price=row[2], low_price=row[3],
+                                       close_price=row[4])
+
             yield row
 
     def get_asset_dataframe(self, start_date: str) -> pd.DataFrame:
 
         query = """SELECT * FROM btc_usd
                     WHERE (unix_time>%s)
-                    ORDER BY unix_time ASC"""
+                    ORDER BY unix_time ASC
+                    """
 
         params = (start_date,)
 
@@ -59,34 +70,56 @@ class Test_exchange():
         history.at[0, 'account_balance'] = self.account_balance
         return history
 
-    def place_buy_order(self, order_type, symbol, quantity, price):
+    def place_market_order(self, order_direction, symbol, quantity):
 
+        order_type = 'market'
         order_id = uuid.uuid4()
+        price = self.current_kline.get_average_price()
 
-        trade = round(self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission), 2)  # noqa
+        trade = self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)
 
         if trade >= 0:
-
-            order = Order(order_id, order_type, quantity, symbol, order_execution_price=price, direction='buy')
+            order = MarketOrder(order_id=order_id, order_type=order_type,
+                                quantity=quantity, asset_name=symbol,
+                                execution_price=price, direction=order_direction)
             self.orders_list.append(order)
-
         else:
-            logging.info('DN')
             logging.info('Not enought money')
             self.do_nothing()
 
-    def place_sell_order(self, order_type, symbol, quantity, price):
+    def place_limit_order(self, order_direction, symbol, quantity, price):
 
+        order_type = 'limit'
         order_id = uuid.uuid4()
-        trade = round(self.asset_balance - quantity, 2)
+
+        trade = self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)
 
         if trade >= 0:
-
-            order = Order(order_id, order_type, quantity, symbol, order_execution_price=price, direction='sell')
+            order = LimitOrder(order_id, order_type, quantity, symbol, signal_price=price, direction=order_direction)
             self.orders_list.append(order)
 
         else:
-            logging.info('DN')
+            logging.info('Not enought money')
+            self.do_nothing()
+
+# TODO Implement Stop loss orders
+    def place_StopLoss_Order(self, order_type, direction, symbol, quantity, execution_price, stop_price):
+
+        order_type = 'stopLoss'
+        order_id = uuid.uuid4()
+
+        trade = self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price']  # noqa
+
+        if trade >= 0:
+
+            order = StopLossOrder(order_id, quantity, symbol,
+                                  execution_price=execution_price, stop_price=stop_price,
+                                  direction=direction, order_type=order_type)
+
+            self.orders_list.append(order)
+
+        else:
+
             logging.info('Not enought money')
             self.do_nothing()
 
@@ -103,61 +136,104 @@ class Test_exchange():
         self.history_df[['unix_time', 'asset_balance', 'account_balance']].to_csv('history.csv')
         logging.info(self.history_df.at[self.tick, 'account_balance'])
 
-# TODO Implement blocking balances in limit orders
     def __manage_orders(self):
 
         for order in self.orders_list:
 
             if order.order_type == 'market':
-                self.__execute_order(order)
-                self.orders_list.remove(order)
+                self.__process_market_order(order)
 
             elif order.order_type == 'limit':
+                self.__process_limit_order(order)
 
-                if not order.is_proceed:
-
-                    if order.order_type == 'sell':
-                        self.asset_balance -= order.quantity
-                    elif order.order_type == 'buy':
-                        pass
-
-                is_executed = self.__process_limit_order(order)
-
-                if is_executed:
-                    self.orders_list.remove(order)
+            elif order.order_type == 'stop_loss':
+                self.__process_StopLoss_order(order)
 
             elif order.order_type == 'OCO':
-                pass
+                self.__process_OCO_order(order)
 
-    def __process_limit_order(self, order: Order):
+    def __process_market_order(self, order: MarketOrder):
 
-        order.is_proceed = True
+        self.__execute_order(order)
+
+        self.orders_list.remove(order)
+
+# TODO improve method
+    def __process_limit_order(self, order: LimitOrder):
+
+        if not order.is_proceed:
+
+            if order.direction == 'sell':
+
+                order.blocked_balance = order.quantity
+                self.asset_balance -= order.blocked_balance
+
+            elif order.direction == 'buy':
+
+                blocked_balance = order.quantity * self.current_kline.get_average_price() * (1-self.comission)
+                self.account_balance -= blocked_balance
+
+            order.is_proceed = True
 
         is_executed = False
 
-        if self.history_df.at[self.tick, 'asset_price'] > order.signal_price:
-            self.__execute_order(order)
+        if self.current_kline.get_average_price() > order.signal_price and order.direction == 'sell':
+
+            self.asset_balance += order.blocked_balance
+
+            market_order = MarketOrder(order.order_id, order.direction,
+                                       order.quantity, order.asset_name,
+                                       execution_price=order.signal_price, order_type='market')
+
+            self.__execute_order(market_order)
+
+            is_executed = True
+
+        elif self.current_kline.get_average_price() < order.signal_price and order.direction == 'buy':
+
+            self.account_balance += order.blocked_balance
+
+            market_order = MarketOrder(order.order_id, order.direction, order.quantity,
+                                       order.asset_name, execution_price=order.signal_price,
+                                       order_type='market')
+
+            self.__execute_order(market_order)
+
+            is_executed = True
+
+        if is_executed:
+            self.orders_list.remove(order)
 
         return is_executed
 
-    def __execute_order(self, order: Order):
+# TODO implement method
+    def __process_StopLoss_order(self, order: StopLossOrder):
+        pass
+
+# TODO implement method
+    def __process_OCO_order(self, order: Oco_Order):
+        pass
+
+    def __execute_order(self, order: MarketOrder):
 
         if order.direction == 'buy':
+
             logging.info('Buy')
-            trade = round(self.account_balance - order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission), 2)  # noqa
+            trade = self.account_balance - order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)  # noqa
 
             self.account_balance = trade
-            self.history_df.at[self.tick, 'account_balance'] = self.account_balance
+            self.history_df.at[self.tick, 'account_balance'] = round(self.account_balance, 2)
 
             self.asset_balance += order.quantity
-            self.history_df.at[self.tick, 'asset_balance'] = self.asset_balance + order.quantity
+            self.history_df.at[self.tick, 'asset_balance'] = round(self.asset_balance + order.quantity, 2)
 
         if order.direction == 'sell':
+
             logging.info('sell')
-            trade = round(self.asset_balance - order.quantity, 2)
+            trade = self.asset_balance - order.quantity
 
             self.asset_balance = trade
-            self.history_df.at[self.tick, 'asset_balance'] = self.asset_balance
+            self.history_df.at[self.tick, 'asset_balance'] = round(self.asset_balance, 2)
 
-            self.account_balance += round(order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission), 2)  # noqa
-            self.history_df.at[self.tick, 'account_balance'] = self.account_balance
+            self.account_balance += order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)  # noqa
+            self.history_df.at[self.tick, 'account_balance'] = round(self.account_balance, 2)

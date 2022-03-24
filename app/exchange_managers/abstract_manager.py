@@ -12,11 +12,19 @@ class Exchange_manager(ABC):
         pass
 
     @abstractmethod
-    def place_buy_order():
+    def place_limit_order():
         pass
 
     @abstractmethod
-    def place_sell_order():
+    def place_market_order():
+        pass
+
+    @abstractmethod
+    def place_OCO_order():
+        pass
+
+    @abstractmethod
+    def place_StopLoss_order():
         pass
 
     @abstractmethod

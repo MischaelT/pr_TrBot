@@ -1,4 +1,5 @@
 class Kline:
+
     def __init__(self, tick, open_price, high_price, low_price, close_price) -> None:
         self.tick = tick
         self.open_price = open_price

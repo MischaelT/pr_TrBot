@@ -1,5 +1,7 @@
 import logging
-import uuid
+
+from test.models.asset import Asset
+from test.user import User
 from test.models.kline import Kline
 from test.models.orders.limit_order import LimitOrder
 from test.models.orders.market_order import MarketOrder
@@ -16,24 +18,37 @@ from utils.config import COMISSION
 
 class Test_exchange():
 
-    def __init__(self, start_date: int, account_balance: int) -> None:
+#TODO implement getting all information by date, not with DataFrames
+
+    def __init__(self, start_date: int, account_balance: int, trade_assets:List) -> None:
 
         self.db = Postgres_db()
 
-        self.account_balance = account_balance
-        self.asset_balance = 0
+        self.orders_list: List[Union[StopLossOrder, MarketOrder, Oco_Order, LimitOrder]] = []
+        self.assets: List[Asset] = []
+        self.user = User(account_balance)
         self.history_df: pd.DataFrame = self.get_history_dataframe()
 
-        self.comission = COMISSION
-        self.klines_df = self.get_asset_dataframe(start_date)
-        self.orders_list: List[Union[StopLossOrder, MarketOrder, Oco_Order, LimitOrder]] = []
+        self.start_date = start_date
         self.current_kline: Kline = None
-
         self.tick = 0
+
+        self.comission = COMISSION
+
+        self.initialise_assets(trade_assets)
+
+    def initialise_assets(self, tickers: List):
+
+        for ticker in tickers:
+
+            asset = Asset(ticker=ticker)
+            self.assets.append(asset)
 
     def get_curent_kline(self):
 
-        for row in self.klines_df.itertuples():
+        klines_df = self.assets[0].get_asset_dataframe(self.start_date)
+
+        for row in klines_df.itertuples():
 
             self.__manage_orders()
 
@@ -73,13 +88,13 @@ class Test_exchange():
     def place_market_order(self, order_direction, symbol, quantity):
 
         order_type = 'market'
-        order_id = uuid.uuid4()
+
         price = self.current_kline.get_average_price()
 
-        trade = self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)
+        trade = self.user.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)
 
         if trade >= 0:
-            order = MarketOrder(order_id=order_id, order_type=order_type,
+            order = MarketOrder(order_type=order_type,
                                 quantity=quantity, asset_name=symbol,
                                 execution_price=price, direction=order_direction)
             self.orders_list.append(order)
@@ -90,12 +105,11 @@ class Test_exchange():
     def place_limit_order(self, order_direction, symbol, quantity, price):
 
         order_type = 'limit'
-        order_id = uuid.uuid4()
 
-        trade = self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)
+        trade = self.user.account_balance - quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)
 
         if trade >= 0:
-            order = LimitOrder(order_id, order_type, quantity, symbol, signal_price=price, direction=order_direction)
+            order = LimitOrder(order_type, quantity, symbol, signal_price=price, direction=order_direction)
             self.orders_list.append(order)
 
         else:
@@ -106,13 +120,13 @@ class Test_exchange():
     def place_StopLoss_Order(self, order_type, direction, symbol, quantity, execution_price, stop_price):
 
         order_type = 'stopLoss'
-        order_id = uuid.uuid4()
 
-        trade = self.account_balance - quantity * self.history_df.at[self.tick, 'asset_price']  # noqa
+
+        trade = self.user.account_balance - quantity * self.history_df.at[self.tick, 'asset_price']  # noqa
 
         if trade >= 0:
 
-            order = StopLossOrder(order_id, quantity, symbol,
+            order = StopLossOrder(quantity, symbol,
                                   execution_price=execution_price, stop_price=stop_price,
                                   direction=direction, order_type=order_type)
 
@@ -128,8 +142,8 @@ class Test_exchange():
         pass
 
     def do_nothing(self):
-        self.history_df.at[self.tick, 'asset_balance'] = self.asset_balance
-        self.history_df.at[self.tick, 'account_balance'] = self.account_balance
+        self.history_df.at[self.tick, 'asset_balance'] = self.user.asset_balance
+        self.history_df.at[self.tick, 'account_balance'] = self.user.account_balance
 
     def get_statistics(self):
 
@@ -166,12 +180,12 @@ class Test_exchange():
             if order.direction == 'sell':
 
                 order.blocked_balance = order.quantity
-                self.asset_balance -= order.blocked_balance
+                self.user.asset_balance -= order.blocked_balance
 
             elif order.direction == 'buy':
 
                 blocked_balance = order.quantity * self.current_kline.get_average_price() * (1-self.comission)
-                self.account_balance -= blocked_balance
+                self.user.account_balance -= blocked_balance
 
             order.is_proceed = True
 
@@ -179,7 +193,7 @@ class Test_exchange():
 
         if self.current_kline.get_average_price() > order.signal_price and order.direction == 'sell':
 
-            self.asset_balance += order.blocked_balance
+            self.user.asset_balance += order.blocked_balance
 
             market_order = MarketOrder(order.order_id, order.direction,
                                        order.quantity, order.asset_name,
@@ -191,7 +205,7 @@ class Test_exchange():
 
         elif self.current_kline.get_average_price() < order.signal_price and order.direction == 'buy':
 
-            self.account_balance += order.blocked_balance
+            self.user.account_balance += order.blocked_balance
 
             market_order = MarketOrder(order.order_id, order.direction, order.quantity,
                                        order.asset_name, execution_price=order.signal_price,
@@ -221,10 +235,10 @@ class Test_exchange():
             logging.info('Buy')
             trade = self.account_balance - order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)  # noqa
 
-            self.account_balance = trade
+            self.user.account_balance = trade
             self.history_df.at[self.tick, 'account_balance'] = round(self.account_balance, 2)
 
-            self.asset_balance += order.quantity
+            self.user.asset_balance += order.quantity
             self.history_df.at[self.tick, 'asset_balance'] = round(self.asset_balance + order.quantity, 2)
 
         if order.direction == 'sell':
@@ -232,8 +246,8 @@ class Test_exchange():
             logging.info('sell')
             trade = self.asset_balance - order.quantity
 
-            self.asset_balance = trade
+            self.user.asset_balance = trade
             self.history_df.at[self.tick, 'asset_balance'] = round(self.asset_balance, 2)
 
-            self.account_balance += order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)  # noqa
+            self.user.account_balance += order.quantity * self.history_df.at[self.tick, 'asset_price'] * (1-self.comission)  # noqa
             self.history_df.at[self.tick, 'account_balance'] = round(self.account_balance, 2)

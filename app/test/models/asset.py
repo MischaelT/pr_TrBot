@@ -1,5 +1,5 @@
-from app.data.postgres import Postgres_db
-from app.test.models.position import Position
+from data.postgres import Postgres_db
+from test.models.position import Position
 
 import pandas as pd
 

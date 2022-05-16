@@ -9,15 +9,15 @@ from exchange_managers.test_manager import TestManager
 from models.user import User
 
 from strategies.RSI_strategy import Rsi_strategy
-from strategies.another_strategy import Another_strategy
+from strategies.random_strategy import Random_strategy
 
 
 class CryptoBot():
 
-    def __init__(self, user: User, strategy: Union[Rsi_strategy, Another_strategy], manager: Union[BinanceManager, TestManager]) -> None:  # noqa
+    def __init__(self, user: User, strategy: Union[Rsi_strategy, Random_strategy], manager: Union[BinanceManager, TestManager]) -> None:  # noqa
 
         self.__manager = manager
-        self.__trading_list = ['']
+        self.__trading_list = user.trading_list
         self.__strategy = strategy
 
         self.__bot_is_active = True
@@ -30,15 +30,16 @@ class CryptoBot():
 
             klines_gen = self.__manager.get_current_kline()
 
-            for coin in self.__trading_list:
+            for ticker in self.__trading_list:
+
+
                 for kline in klines_gen:
 
                     logging.info(kline)
-                    prediction = self.__strategy.get_prediction(ticker=coin, kline=kline)
 
-                    self.trade(prediction, coin)
+                    prediction = self.__strategy.get_prediction(ticker=ticker, kline=kline)
 
-                self.__manager.get_statistics()
+                    self.trade(prediction, ticker)
 
             break
 

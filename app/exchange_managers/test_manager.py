@@ -5,14 +5,14 @@ from exchange_managers.abstract_manager import Exchange_manager
 
 class TestManager(Exchange_manager):
 
-    def __init__(self, account_balance: int, start_date: int) -> None:
+    def __init__(self) -> None:
 
-        self.exchange = Test_exchange(start_date=start_date, account_balance=account_balance)
+        self.exchange = Test_exchange()
 
         super().__init__()
 
     def get_current_kline(self):
-        return self.exchange.get_curent_kline()
+        return self.exchange.tick_generator()
 
     def check_connection(self):
         return True
@@ -31,9 +31,6 @@ class TestManager(Exchange_manager):
 
     def do_nothing(self):
         self.exchange.do_nothing()
-
-    def get_statistics(self):
-        self.exchange.get_statistics()
 
     def cancel_order():
         pass

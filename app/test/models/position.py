@@ -1,5 +1,5 @@
 from typing import List
-from app.test.models.kline import Kline
+from test.models.kline import Kline
 
 
 class Position():

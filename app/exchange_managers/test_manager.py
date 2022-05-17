@@ -23,20 +23,27 @@ class TestManager(Exchange_manager):
     def place_market_order(self, order_direction, symbol, quantity):
         self.exchange.place_market_order(order_direction=order_direction, symbol=symbol, quantity=quantity)
 
-    def place_OCO_order():
+    def place_OCO_order(self):
         pass
 
-    def place_StopLoss_order():
+    def place_StopLoss_order(self):
         pass
 
     def do_nothing(self):
         self.exchange.do_nothing()
 
-    def cancel_order():
+    def cancel_order(self):
         pass
 
-    def get_open_orders():
+    def get_open_orders(self):
         pass
 
-    def get_asset_balance():
+    def get_asset_balance(self):
         pass
+
+    def get_test_statistics(self):
+
+        """
+        print user statistics for test
+        """
+        self.exchange.get_statistics()

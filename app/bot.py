@@ -26,12 +26,16 @@ class CryptoBot():
 
     def run(self) -> None:
 
+        """
+            Primary method, that takes a prediction from strategy and
+            then call the method for placing orders to exchange.
+        """
+
         while self.__bot_is_active:
 
             klines_gen = self.__manager.get_current_kline()
 
             for ticker in self.__trading_list:
-
 
                 for kline in klines_gen:
 
@@ -43,21 +47,36 @@ class CryptoBot():
 
             break
 
-    def trade(self, prediction: str, coin) -> None:
+        self.__manager.get_test_statistics()
+
+    def trade(self, prediction: str, coin: str) -> None:
+
+        """
+        Method that place orders to exchange based on prediction
+        -1 -- sell
+        1 -- buy
+        """
 
         if prediction == 1:
 
+            logging.info('Buy')
             self.__manager.place_market_order(order_direction='buy', symbol=coin, quantity=1)
 
         elif prediction == -1:
 
-            self.__manager.place_market_order(order_direction='sell', symbol=coin, quantity=1)
+            logging.info('Sell')
+            self.__manager.place_market_order(order_direction='sell', symbol=coin, quantity=10)
 
         else:
 
+            logging.info('Do nothing')
             self.__manager.do_nothing()
 
     def get_historical_data(self):
+
+        """
+            Method that extracts a trade data from binance. It will NOT WORK if manager is TestManager (main.py)
+        """
 
         if self.__manager.check_connection():
             self.__manager.save_historical_data('BTCBUSD', Client.KLINE_INTERVAL_1DAY, to_date=	1611957600, from_date=1611957600)  # noqa

@@ -18,8 +18,7 @@ class Postgres_db:
 
         super().__init__()
 
-        # self.__create_table_users()
-        # self.__create_table_coins()
+        self.__create_table_BtcUsd()
 
     def get_data(self, request_text: str, params: tuple) -> list:
 
@@ -42,53 +41,20 @@ class Postgres_db:
 
     def query_to_dataframe(self, query_result) -> pd.DataFrame:
 
+        """
+        Returns pandas dataframe from query result
+
+        """
+
         columns = ('open', 'high', 'low', 'close', 'volume', 'timeframe', 'unix_time')
         df = pd.DataFrame(query_result, columns=columns)
 
         return df
 
-    def __create_table_coins(self) -> None:
+    def __create_table_BtcUsd(self) -> None:
 
         """
-            Method create table coins.
-            Raise Exception if table already exists
-        """
-
-        connection = self._make_connection()
-
-        try:
-
-            cursor = connection.cursor()
-
-            create_users_query = '''CREATE TABLE users
-                                (
-                                ID              INT       PRIMARY KEY       NOT NULL,
-                                IS_REGISTERED   BOOLEAN                     NOT NULL,
-                                EXP             TEXT                        NOT NULL,
-                                LANG            TEXT                        NOT NULL,
-                                CITY            TEXT                        NOT NULL,
-                                SALARY          TEXT                        NOT NULL
-                                ); '''
-
-            cursor.execute(create_users_query)
-
-            connection.commit()
-
-            logging.info('Table users succesfully created')
-
-        except (Exception) as exception:
-            logging.exception(f'There was a problem during creating table users: {str(exception)}')
-
-        finally:
-            if connection:
-                cursor.close()
-                connection.close()
-
-    def __create_table_by_name(self, params) -> None:
-
-        """
-            Method create table vacancies.
-            Raise Exception if table already exists
+            Method create table btc_usd if it is not exists
         """
 
         connection = self._make_connection()
@@ -97,27 +63,24 @@ class Postgres_db:
 
             cursor = connection.cursor()
 
-            create_vacancies_query = '''CREATE TABLE vacancies
-                                (
-                                COIN_ID
-                                UNIX_TIME       SMALLSERIAL                  NOT NULL,
+            create_table_query = '''CREATE TABLE IF NOT EXISTS sfdfhehdh (
                                 OPEN            REAL                         NOT NULL,
                                 HIGH            REAL                         NOT NULL,
                                 LOW             REAL                         NOT NULL,
                                 CLOSE           REAL                         NOT NULL,
                                 VOLUME          REAL                         NOT NULL,
-                                TRADES_NUM      INT                          NOT NULL,
-
+                                TIMEFRAME       TEXT                         NOT NULL,
+                                UNIX_TIME       SERIAL                       NOT NULL
                                 ); '''
 
-            cursor.execute(create_vacancies_query)
+            cursor.execute(create_table_query)
 
             connection.commit()
 
-            logging.info('Table vacancies succesfully created')
+            logging.info('Table succesfully created')
 
         except (Exception) as exception:
-            logging.exception(f'There was a problem during creating table vacancies: {str(exception)}')
+            logging.exception(f'There was a problem during creating table : {str(exception)}')
 
         finally:
             if connection:
@@ -179,7 +142,7 @@ class Postgres_db:
             Method receives data from database
 
         Returns:
-            list: requested data
+            list: list of tuples with requested data
         """
 
         connection = self._make_connection()

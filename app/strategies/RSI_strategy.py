@@ -2,7 +2,7 @@ import numpy as np
 
 import pandas as pd
 
-from strategies.base_strategy import Base_strategy
+from strategies.abstract_strategy import Base_strategy
 
 import talib
 

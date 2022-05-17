@@ -1,30 +1,24 @@
 import logging
-
 from test.models.asset import Asset
-from test.models.user import User
 from test.models.kline import Kline
 from test.models.orders.limit_order import LimitOrder
 from test.models.orders.market_order import MarketOrder
 from test.models.orders.oco_order import Oco_Order
 from test.models.orders.stopLoss_order import StopLossOrder
+from test.models.user import User
+from test.test_config import COMISSION, TICS_NUMBER, TIMEFRAME, USER_ASSET_LIST
 from typing import List, Union
 
 from data.postgres import Postgres_db
 
-import pandas as pd
-
-from app.test.models.user import User
-
-from test.test_config import COMISSION, TICS_NUMBER, TIMEFRAME, USER_ASSET_LIST
-
 
 class Test_exchange():
 
-#TODO implement getting all information by date, not with DataFrames
+    # TODO implement trading with different assets
 
     def __init__(self) -> None:
 
-        self.db:Postgres_db = Postgres_db()
+        self.db: Postgres_db = Postgres_db()
 
         self.orders_list: List[Union[StopLossOrder, MarketOrder, Oco_Order, LimitOrder]] = []
         self.assets: List[Asset] = []
@@ -43,7 +37,6 @@ class Test_exchange():
         self.initialize_assets()
         self.initialize_start_date()
 
-
     def initialize_timeframe(self):
 
         if TIMEFRAME == '1H':
@@ -59,10 +52,10 @@ class Test_exchange():
 
         for ticker in trade_assets:
 
-            asset = Asset(ticker=ticker, db = self.db)
+            asset = Asset(ticker=ticker, db=self.db)
             self.assets.append(asset)
 
-    #TODO Fix getting time system
+    # TODO Fix getting time system
     def initialize_start_date(self):
 
         query = ''' SELECT unix_time FROM btc_usd
@@ -73,19 +66,13 @@ class Test_exchange():
 
         current_time = 1647820800
 
-        self.current_time = current_time - self.one_tick*TICS_NUMBER
+        self.current_time = current_time - self.one_tick*(TICS_NUMBER-1)
 
     def tick_generator(self):
 
-        while (self.tick_number <= TICS_NUMBER-1):
+        while (self.tick_number < TICS_NUMBER):
 
             self.__manage_orders()
-
-            self.tick_number += 1
-            self.current_time += self.one_tick
-
-            print(self.tick_number, self.current_time)
-
 
             query = """SELECT * FROM btc_usd
                         WHERE (unix_time=%s)
@@ -102,19 +89,30 @@ class Test_exchange():
 
             yield row
 
+            self.tick_number += 1
+            self.current_time += self.one_tick
+
+    # TODO Fix checking user balances
     def place_market_order(self, order_direction, symbol, quantity):
 
         order_type = 'market'
 
         price = self.current_kline.get_average_price()
 
-        trade = self.user.account_balance - quantity * self.user.history_df.at[self.tick_number, 'asset_price'] * (1-self.comission)
+        trade = self.user.account_balance - quantity * price * (1+self.comission)
+
+        if order_direction == 'buy':
+            trade = self.user.account_balance - quantity * price * (1+self.comission)
+        elif order_direction == 'sell':
+            trade = self.user.asset_balance - quantity
 
         if trade >= 0:
+
             order = MarketOrder(order_type=order_type,
                                 quantity=quantity, asset_name=symbol,
                                 execution_price=price, direction=order_direction)
             self.orders_list.append(order)
+
         else:
             logging.info('Not enought money')
             self.do_nothing()
@@ -123,7 +121,9 @@ class Test_exchange():
 
         order_type = 'limit'
 
-        trade = self.user.account_balance - quantity * self.user.history_df.at[self.tick_number, 'asset_price'] * (1-self.comission)
+        price = self.current_kline.get_average_price()
+
+        trade = self.user.account_balance - quantity * price * (1+self.comission)
 
         if trade >= 0:
             order = LimitOrder(order_type, quantity, symbol, signal_price=price, direction=order_direction)
@@ -161,6 +161,9 @@ class Test_exchange():
     def do_nothing(self):
         self.user.history_df.at[self.tick_number, 'asset_balance'] = self.user.asset_balance
         self.user.history_df.at[self.tick_number, 'account_balance'] = self.user.account_balance
+
+    def get_statistics(self):
+        self.user.get_statistics()
 
     def __manage_orders(self):
 
@@ -242,16 +245,18 @@ class Test_exchange():
 
     def __execute_order(self, order: MarketOrder):
 
+        price = self.current_kline.get_average_price()
+
         if order.direction == 'buy':
 
             logging.info('Buy')
-            trade = self.user.account_balance - order.quantity * self.user.history_df.at[self.tick_number, 'asset_price'] * (1-self.comission)  # noqa
+            trade = self.user.account_balance - order.quantity * price * (1+self.comission)  # noqa
 
             self.user.account_balance = trade
             self.user.history_df.at[self.tick_number, 'account_balance'] = round(self.user.account_balance, 2)
 
             self.user.asset_balance += order.quantity
-            self.user.history_df.at[self.tick_number, 'asset_balance'] = round(self.user.asset_balance + order.quantity, 2)
+            self.user.history_df.at[self.tick_number, 'asset_balance'] = round(self.user.asset_balance + order.quantity, 2)  # noqa
 
         if order.direction == 'sell':
 
@@ -261,5 +266,5 @@ class Test_exchange():
             self.user.asset_balance = trade
             self.user.history_df.at[self.tick_number, 'asset_balance'] = round(self.user.asset_balance, 2)
 
-            self.user.account_balance += order.quantity * self.user.history_df.at[self.tick_number, 'asset_price'] * (1-self.comission)  # noqa
+            self.user.account_balance += order.quantity * price * (1-self.comission)  # noqa
             self.user.history_df.at[self.tick_number, 'account_balance'] = round(self.user.account_balance, 2)

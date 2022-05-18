@@ -6,11 +6,9 @@ class MarketOrder(BaseOrder):
     def __init__(self, direction, order_type, quantity,
                  asset_name,  execution_price) -> None:
 
-        self.direction = direction
-
         self.execution_price = execution_price
 
-        super().__init__(order_type, quantity, asset_name)
+        super().__init__(order_type, quantity, asset_name, direction)
 
     def cancel_order(self):
         return self.order_id

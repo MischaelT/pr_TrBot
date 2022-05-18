@@ -24,7 +24,7 @@ class Exchange_manager(ABC):
         pass
 
     @abstractmethod
-    def place_StopLoss_order():
+    def place_stopLimit_order():
         pass
 
     @abstractmethod

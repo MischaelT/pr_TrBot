@@ -1,3 +1,4 @@
+from utils.logging import logger
 from bot import CryptoBot
 
 from exchange_managers.test_manager import TestManager
@@ -13,4 +14,7 @@ exchange_manager = TestManager()
 bot = CryptoBot(user, strategy, exchange_manager)
 
 if __name__ == '__main__':
+    logger.warning('Begins')
+
+    logger.debug('Begins')
     bot.run()

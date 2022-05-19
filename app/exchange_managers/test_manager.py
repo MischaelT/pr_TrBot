@@ -1,9 +1,13 @@
-from test.backtest_exchange import Test_exchange
-
 from exchange_managers.abstract_manager import Exchange_manager
+
+from tests.test_exchange.backtest_exchange import Test_exchange
 
 
 class TestManager(Exchange_manager):
+
+    """
+        Class TestManager is exchange manager for testing and provides methods for interaction with TestExchange
+    """
 
     def __init__(self) -> None:
 
@@ -32,8 +36,8 @@ class TestManager(Exchange_manager):
     def do_nothing(self):
         self.exchange.do_nothing()
 
-    def cancel_order(self, id):
-        self.cancel_order(id)
+    def cancel_order(self, order_id):
+        self.cancel_order(order_id)
 
     def get_open_orders(self):
         pass
@@ -41,9 +45,9 @@ class TestManager(Exchange_manager):
     def get_asset_balance(self):
         pass
 
-    def get_test_statistics(self):
+    def get_statistics(self):
 
         """
         print user statistics for test
         """
-        self.exchange.get_statistics()
+        return self.exchange.get_statistics()

@@ -38,3 +38,7 @@ class Exchange_manager(ABC):
     @abstractmethod
     def get_asset_balance():
         pass
+
+    @abstractmethod
+    def get_statistics():
+        pass

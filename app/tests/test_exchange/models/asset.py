@@ -1,8 +1,8 @@
-from test.models.position import Position
-
 from data.postgres import Postgres_db
 
 import pandas as pd
+
+from tests.test_exchange.models.position import Position
 
 
 class Asset():

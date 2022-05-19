@@ -1,4 +1,4 @@
-from test.models.orders.base_order import BaseOrder
+from tests.test_exchange.models.orders.base_order import BaseOrder
 
 
 class MarketOrder(BaseOrder):

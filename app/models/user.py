@@ -7,3 +7,5 @@ class User():
         self.trading_list = config.TRADING_LIST
         self.api_key = config.API_KEY
         self.secret_key = config.SECRET_KEY
+
+        self.statistics = {}

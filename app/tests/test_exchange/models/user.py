@@ -1,7 +1,6 @@
-import logging
-from test.test_config import USER_BALANCE
-
 import pandas as pd
+
+from tests.configs.config import USER_BALANCE
 
 
 class User():
@@ -26,5 +25,5 @@ class User():
 
         return history
 
-    def get_statistics(self):
-        logging.info(self.history_df)
+    def get_profit(self):
+        return self.account_balance/USER_BALANCE

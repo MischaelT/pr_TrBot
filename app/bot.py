@@ -10,15 +10,17 @@ from models.user import User
 
 from strategies.RSI_strategy import Rsi_strategy
 from strategies.random_strategy import Random_strategy
+from strategies.test_strategy import Test_strategy
 
 
 class CryptoBot():
 
-    def __init__(self, user: User, strategy: Union[Rsi_strategy, Random_strategy], manager: Union[BinanceManager, TestManager]) -> None:  # noqa
+    def __init__(self, user: User, strategy: Union[Rsi_strategy, Random_strategy, Test_strategy], manager: Union[BinanceManager, TestManager]) -> None:  # noqa
 
         self.__manager = manager
         self.__trading_list = user.trading_list
         self.__strategy = strategy
+        self.user = user
 
         self.__bot_is_active = True
 
@@ -47,7 +49,7 @@ class CryptoBot():
 
             break
 
-        self.__manager.get_test_statistics()
+        self.user.statistics = self.__manager.get_statistics()
 
     def trade(self, prediction: str, coin: str) -> None:
 

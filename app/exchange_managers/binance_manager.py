@@ -192,3 +192,6 @@ class BinanceManager(Exchange_manager):
                 return item
             else:
                 return {}
+
+    def get_statistics():
+        pass
